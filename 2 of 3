@@ -1,0 +1,25 @@
+alias: Alarm — Lock Code From Buffer
+description: >-
+  When alarm_code_buffer reaches 4+ digits, copy the first four to
+  alarm_locked_code and clear the buffer.
+triggers:
+  - trigger: state
+    entity_id: input_text.alarm_code_buffer
+conditions:
+  - condition: template
+    value_template: >
+      {% set new_buf = trigger.to_state.state | default('') %} {% set old_buf =
+      (trigger.from_state.state if trigger.from_state is not none else '') %} {{
+      new_buf | length >= 4 and old_buf | length < 4 }}
+actions:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.alarm_locked_code
+    data:
+      value: "{{ (trigger.to_state.state | default(''))[0:4] }}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.alarm_code_buffer
+    data:
+      value: ""
+mode: single
