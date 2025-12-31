@@ -1,0 +1,67 @@
+alias: Alarm — Timers Transfer + Inactivity Reset
+description: >
+  Handles both timer idles: - alarm_transfer_timer idle -> append MBs to buffer
+  then clear MBs - alarm_code_buffer_clear_timer idle -> clear buffer and MBs
+triggers:
+  - entity_id: timer.alarm_transfer_timer
+    to: idle
+    id: transfer_idle
+    trigger: state
+  - entity_id: timer.alarm_code_buffer_clear_timer
+    to: idle
+    id: inactivity_idle
+    trigger: state
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: transfer_idle
+          - condition: template
+            value_template: >
+              {% set mb1 = states('input_number.alarm_mb1') | int(0) %} {% set
+              mb2 = states('input_number.alarm_mb2') | int(0) %} {% set mb3 =
+              states('input_number.alarm_mb3') | int(0) %} {{ mb1 != 0 or mb2 !=
+              0 or mb3 != 0 }}
+        sequence:
+          - variables:
+              buf: "{{ states('input_text.alarm_code_buffer') | default('') }}"
+              mb1: "{{ states('input_number.alarm_mb1') | int(0) }}"
+              mb2: "{{ states('input_number.alarm_mb2') | int(0) }}"
+              mb3: "{{ states('input_number.alarm_mb3') | int(0) }}"
+              code: |-
+                {{ ''
+                   ~ (mb1 | string if mb1 != 0 else '')
+                   ~ (mb2 | string if mb2 != 0 else '')
+                   ~ (mb3 | string if mb3 != 0 else '') }}
+          - target:
+              entity_id: input_text.alarm_code_buffer
+            data:
+              value: "{{ buf ~ code }}"
+            action: input_text.set_value
+          - target:
+              entity_id:
+                - input_number.alarm_mb1
+                - input_number.alarm_mb2
+                - input_number.alarm_mb3
+            data:
+              value: 0
+            action: input_number.set_value
+      - conditions:
+          - condition: trigger
+            id: inactivity_idle
+        sequence:
+          - target:
+              entity_id: input_text.alarm_code_buffer
+            data:
+              value: ""
+            action: input_text.set_value
+          - target:
+              entity_id:
+                - input_number.alarm_mb1
+                - input_number.alarm_mb2
+                - input_number.alarm_mb3
+            data:
+              value: 0
+            action: input_number.set_value
+mode: single
